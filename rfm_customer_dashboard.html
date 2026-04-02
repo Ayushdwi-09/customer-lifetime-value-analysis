@@ -1,0 +1,224 @@
+
+<style>
+  .dash { padding: 1.5rem 0; font-family: var(--font-sans); }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .kpi { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 1rem; }
+  .kpi-label { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 6px; }
+  .kpi-val { font-size: 22px; font-weight: 500; margin: 0; color: var(--color-text-primary); }
+  .kpi-sub { font-size: 12px; color: var(--color-text-secondary); margin: 4px 0 0; }
+  .charts-row { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 16px; margin-bottom: 1.5rem; }
+  .panel { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
+  .panel-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin: 0 0 1rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .seg-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .seg-label { font-size: 13px; color: var(--color-text-primary); width: 120px; flex-shrink: 0; }
+  .seg-bar-wrap { flex: 1; height: 8px; background: var(--color-border-tertiary); border-radius: 4px; overflow: hidden; }
+  .seg-bar { height: 100%; border-radius: 4px; }
+  .seg-val { font-size: 12px; color: var(--color-text-secondary); width: 60px; text-align: right; flex-shrink: 0; }
+  .bottom-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.4fr); gap: 16px; }
+  .scatter-wrap { position: relative; width: 100%; }
+  .top-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .top-table th { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-align: left; padding: 6px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .top-table td { padding: 7px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-primary); }
+  .top-table tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+  .seg-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1rem; }
+  .seg-btn { font-size: 12px; padding: 3px 10px; border-radius: 99px; border: 0.5px solid var(--color-border-secondary); background: transparent; cursor: pointer; color: var(--color-text-secondary); }
+  .seg-btn.active { background: var(--color-text-primary); color: var(--color-background-primary); border-color: var(--color-text-primary); }
+  .rec-select { font-size: 12px; padding: 3px 8px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-secondary); color: var(--color-text-primary); cursor: pointer; margin-bottom: 1rem; }
+</style>
+
+<div class="dash">
+  <div class="kpi-grid">
+    <div class="kpi">
+      <p class="kpi-label">Total customers</p>
+      <p class="kpi-val">4,338</p>
+      <p class="kpi-sub">across 6 segments</p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-label">Total revenue</p>
+      <p class="kpi-val">£8.91M</p>
+      <p class="kpi-sub">lifetime monetary value</p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-label">Champions</p>
+      <p class="kpi-val">607</p>
+      <p class="kpi-sub">14% of customers, 47% of revenue</p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-label">At risk</p>
+      <p class="kpi-val">2,666</p>
+      <p class="kpi-sub">61% of base need attention</p>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="panel">
+      <p class="panel-title">Revenue by segment</p>
+      <div style="position: relative; height: 220px;">
+        <canvas id="revChart"></canvas>
+      </div>
+    </div>
+    <div class="panel">
+      <p class="panel-title">Customer distribution</p>
+      <div style="position: relative; height: 180px; margin-bottom: 8px;">
+        <canvas id="distChart"></canvas>
+      </div>
+      <div id="dist-legend" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+    </div>
+  </div>
+
+  <div class="bottom-row">
+    <div class="panel">
+      <p class="panel-title">Segment metrics</p>
+      <div id="seg-bars"></div>
+    </div>
+    <div class="panel">
+      <p class="panel-title">Top customers</p>
+      <div class="seg-filter" id="filter-btns"></div>
+      <table class="top-table" id="top-table">
+        <thead><tr><th>Customer</th><th>Revenue</th><th>Freq</th><th>Recency</th><th>Segment</th></tr></thead>
+        <tbody id="top-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const SEG_DATA = [
+  {seg:"Champions",count:607,avg_recency:5.92,avg_freq:288.62,avg_mon:6950.14,total_rev:4218731.99},
+  {seg:"At Risk",count:2666,avg_recency:137.25,avg_freq:65.31,avg_mon:1264.61,total_rev:3371438.84},
+  {seg:"Potential Loyalists",count:418,avg_recency:23.22,avg_freq:68.04,avg_mon:1430.41,total_rev:597911.48},
+  {seg:"Needs Attention",count:386,avg_recency:53.0,avg_freq:32.27,avg_mon:719.75,total_rev:277822.66},
+  {seg:"Loyal",count:206,avg_recency:6.77,avg_freq:35.34,avg_mon:1163.52,total_rev:239685.61},
+  {seg:"New Customers",count:55,avg_recency:6.71,avg_freq:7.35,avg_mon:3742.13,total_rev:205817.32}
+];
+
+const TOP_CUSTS = [
+  {id:14646,recency:2,freq:2076,monetary:280206.02,seg:"Champions"},
+  {id:18102,recency:1,freq:431,monetary:259657.30,seg:"Champions"},
+  {id:17450,recency:8,freq:337,monetary:194550.79,seg:"Champions"},
+  {id:16446,recency:1,freq:3,monetary:168472.50,seg:"New Customers"},
+  {id:14911,recency:1,freq:5675,monetary:143825.06,seg:"Champions"},
+  {id:12415,recency:24,freq:714,monetary:124914.53,seg:"At Risk"},
+  {id:14156,recency:10,freq:1400,monetary:117379.63,seg:"Champions"},
+  {id:17511,recency:3,freq:963,monetary:91062.38,seg:"Champions"},
+  {id:16029,recency:39,freq:242,monetary:81024.84,seg:"At Risk"},
+  {id:12346,recency:326,freq:1,monetary:77183.60,seg:"At Risk"}
+];
+
+const COLORS = {
+  "Champions":"#1D9E75",
+  "At Risk":"#E24B4A",
+  "Potential Loyalists":"#378ADD",
+  "Needs Attention":"#EF9F27",
+  "Loyal":"#7F77DD",
+  "New Customers":"#D85A30"
+};
+
+const BADGE_STYLES = {
+  "Champions":   "background:#E1F5EE;color:#0F6E56",
+  "At Risk":     "background:#FCEBEB;color:#A32D2D",
+  "Potential Loyalists":"background:#E6F1FB;color:#185FA5",
+  "Needs Attention":"background:#FAEEDA;color:#854F0B",
+  "Loyal":       "background:#EEEDFE;color:#3C3489",
+  "New Customers":"background:#FAECE7;color:#993C1D"
+};
+
+const fmtK = v => v >= 1000000 ? '£' + (v/1000000).toFixed(2) + 'M' : v >= 1000 ? '£' + (v/1000).toFixed(1) + 'K' : '£' + Math.round(v);
+
+new Chart(document.getElementById('revChart'), {
+  type: 'bar',
+  data: {
+    labels: SEG_DATA.map(d => d.seg),
+    datasets: [{
+      data: SEG_DATA.map(d => Math.round(d.total_rev)),
+      backgroundColor: SEG_DATA.map(d => COLORS[d.seg] + 'cc'),
+      borderColor: SEG_DATA.map(d => COLORS[d.seg]),
+      borderWidth: 1,
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmtK(ctx.raw) } } },
+    scales: {
+      x: { ticks: { font: { size: 11 }, color: '#888', maxRotation: 30, autoSkip: false }, grid: { display: false } },
+      y: { ticks: { font: { size: 11 }, color: '#888', callback: v => fmtK(v) }, grid: { color: 'rgba(128,128,128,0.1)' } }
+    }
+  }
+});
+
+const total = SEG_DATA.reduce((a,d) => a + d.count, 0);
+new Chart(document.getElementById('distChart'), {
+  type: 'doughnut',
+  data: {
+    labels: SEG_DATA.map(d => d.seg),
+    datasets: [{
+      data: SEG_DATA.map(d => d.count),
+      backgroundColor: SEG_DATA.map(d => COLORS[d.seg] + 'dd'),
+      borderColor: SEG_DATA.map(d => COLORS[d.seg]),
+      borderWidth: 1
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '65%',
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.raw + ' (' + Math.round(ctx.raw/total*100) + '%)' } } }
+  }
+});
+
+const legend = document.getElementById('dist-legend');
+SEG_DATA.forEach(d => {
+  legend.innerHTML += `<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--color-text-secondary)"><span style="width:10px;height:10px;border-radius:2px;background:${COLORS[d.seg]};flex-shrink:0;"></span>${d.seg}</span>`;
+});
+
+const maxRev = Math.max(...SEG_DATA.map(d => d.total_rev));
+const segBars = document.getElementById('seg-bars');
+SEG_DATA.forEach(d => {
+  const pct = Math.round(d.total_rev / maxRev * 100);
+  segBars.innerHTML += `
+    <div class="seg-row">
+      <span class="seg-label" style="font-size:12px">${d.seg}</span>
+      <div class="seg-bar-wrap"><div class="seg-bar" style="width:${pct}%;background:${COLORS[d.seg]}"></div></div>
+      <span class="seg-val">${fmtK(d.total_rev)}</span>
+    </div>
+    <div style="display:flex;gap:16px;padding:0 0 8px 130px;font-size:11px;color:var(--color-text-secondary);">
+      <span>Recency: ${d.avg_recency}d</span>
+      <span>Avg order: ${fmtK(d.avg_mon)}</span>
+      <span>Freq: ${Math.round(d.avg_freq)}</span>
+    </div>`;
+});
+
+const segments = ['All', ...SEG_DATA.map(d => d.seg)];
+const filterBtns = document.getElementById('filter-btns');
+let activeFilter = 'All';
+
+segments.forEach(s => {
+  const btn = document.createElement('button');
+  btn.className = 'seg-btn' + (s === 'All' ? ' active' : '');
+  btn.textContent = s;
+  btn.onclick = () => {
+    activeFilter = s;
+    document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTable();
+  };
+  filterBtns.appendChild(btn);
+});
+
+function renderTable() {
+  const filtered = activeFilter === 'All' ? TOP_CUSTS : TOP_CUSTS.filter(c => c.seg === activeFilter);
+  const allData = activeFilter === 'All' ? TOP_CUSTS : filtered;
+  const tbody = document.getElementById('top-body');
+  tbody.innerHTML = allData.length ? allData.map(c => `
+    <tr>
+      <td style="font-weight:500">#${c.id}</td>
+      <td>${fmtK(c.monetary)}</td>
+      <td>${c.freq.toLocaleString()}</td>
+      <td>${c.recency}d</td>
+      <td><span class="badge" style="${BADGE_STYLES[c.seg]}">${c.seg}</span></td>
+    </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:var(--color-text-secondary);padding:1rem">No customers in this segment among top 10</td></tr>`;
+}
+
+renderTable();
+</script>
