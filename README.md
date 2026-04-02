@@ -45,10 +45,10 @@ This analysis enables businesses to:
 
 📁 Project Structure
 
-* data/ → cleaned datasets (RFM outputs)
-* src/ → Python scripts for preprocessing and segmentation
-* dashboard/ → JavaScript-based interactive dashboard
-* powerbi/ → exploratory analysis and trend visuals
+* rfm_customers.csv → cleaned datasets (RFM outputs)
+* file.py → Python scripts for preprocessing and segmentation
+* rfm_customer_dashboard.html → JavaScript-based interactive dashboard
+* dashboard.pbix → exploratory analysis and trend visuals
 
 📌 Conclusion
 The analysis demonstrates that a small segment of customers drives a disproportionate share of revenue, while a large portion of the customer base is at risk of churn. By combining RFM segmentation with interactive visualization, the project provides actionable insights for improving retention and maximizing customer lifetime value.
